@@ -30,8 +30,6 @@ chmod +x scripts/trigger-pipeline.sh
 # Запуск при drift detection
 ./scripts/trigger-pipeline.sh -p PROJECT_ID -t TRIGGER_TOKEN -d
 
-# З Slack сповіщеннями
-./scripts/trigger-pipeline.sh -p PROJECT_ID -t TRIGGER_TOKEN -s SLACK_WEBHOOK_URL
 ```
 
 ### Параметри
@@ -44,7 +42,6 @@ chmod +x scripts/trigger-pipeline.sh
 | `-b, --branch` | Гілка для запуску (за замовчуванням: main) | ❌ |
 | `-r, --retrain` | Запустити retrain моделі | ❌ |
 | `-d, --drift` | Запустити при drift detection | ❌ |
-| `-s, --slack` | Slack webhook URL | ❌ |
 
 ### Приклади
 
@@ -52,12 +49,11 @@ chmod +x scripts/trigger-pipeline.sh
 # Звичайний запуск
 ./scripts/trigger-pipeline.sh -p 123456 -t abc123def456
 
-# Запуск retrain з Slack сповіщеннями
+# Запуск retrain
 ./scripts/trigger-pipeline.sh \
   -p 123456 \
   -t abc123def456 \
-  -r \
-  -s https://hooks.slack.com/services/...
+  -r
 
 # Запуск при drift detection
 ./scripts/trigger-pipeline.sh \
@@ -135,12 +131,6 @@ Content-Type: application/json
 2. `Settings` → `General` → `Project ID`
 3. Скопіювати ID
 
-### 3. Налаштування Slack Webhook (опціонально)
-
-1. Перейти в Slack workspace
-2. `Apps` → `Incoming Webhooks`
-3. Створити новий webhook
-4. Скопіювати URL
 
 ## 🐳 Docker
 

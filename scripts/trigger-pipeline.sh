@@ -36,7 +36,6 @@ TRIGGER_TOKEN=""
 BRANCH="main"
 TRIGGER_RETRAIN="false"
 DRIFT_DETECTED="false"
-SLACK_WEBHOOK=""
 
 # Функція для показу довідки
 show_help() {
@@ -53,7 +52,6 @@ show_help() {
     -b, --branch BRANCH        Гілка для запуску (за замовчуванням: main)
     -r, --retrain              Запустити retrain моделі
     -d, --drift                Запустити при drift detection
-    -s, --slack URL            Slack webhook URL для сповіщень
     -h, --help                 Показати цю довідку
 
 Приклади:
@@ -66,8 +64,6 @@ show_help() {
     # Запуск при drift
     $0 -p 123456 -t abc123 -d
 
-    # З Slack сповіщеннями
-    $0 -p 123456 -t abc123 -s https://hooks.slack.com/...
 
 EOF
 }
@@ -98,10 +94,6 @@ while [[ $# -gt 0 ]]; do
         -d|--drift)
             DRIFT_DETECTED="true"
             shift
-            ;;
-        -s|--slack)
-            SLACK_WEBHOOK="$2"
-            shift 2
             ;;
         -h|--help)
             show_help
@@ -142,9 +134,6 @@ if [[ "$DRIFT_DETECTED" == "true" ]]; then
     VARIABLES="$VARIABLES,\"variables[DRIFT_DETECTED]\":\"true\""
 fi
 
-if [[ -n "$SLACK_WEBHOOK" ]]; then
-    VARIABLES="$VARIABLES,\"variables[SLACK_WEBHOOK_URL]\":\"$SLACK_WEBHOOK\""
-fi
 
 if [[ -n "$VARIABLES" ]]; then
     PAYLOAD="$PAYLOAD$VARIABLES"
@@ -159,9 +148,6 @@ log "Гілка: $BRANCH"
 log "Retrain: $TRIGGER_RETRAIN"
 log "Drift: $DRIFT_DETECTED"
 
-if [[ -n "$SLACK_WEBHOOK" ]]; then
-    log "Slack webhook: $SLACK_WEBHOOK"
-fi
 
 # Відправка запиту
 log "Відправка запиту до GitLab API..."
