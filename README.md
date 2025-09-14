@@ -30,6 +30,10 @@ aiops-quality-project/
 ├── .gitlab-ci.yml         # CI/CD пайплайн
 ├── Dockerfile             # Контейнер для локальної розробки
 ├── requirements.txt       # Python залежності
+├── scripts/               # Скрипти для запуску pipeline
+│   ├── trigger-pipeline.sh # Bash скрипт для запуску
+│   ├── drift-webhook.py   # Python webhook сервер
+│   └── README.md          # Документація скриптів
 └── README.md
 ```
 
@@ -141,12 +145,41 @@ kubectl port-forward -n monitoring svc/grafana 3000:80
 
 ### Запуск retrain
 
+#### 1. Через GitLab UI
+- Перейти в `CI/CD` → `Pipelines`
+- Натиснути `Run pipeline`
+- Вибрати гілку та змінні
+
+#### 2. Через скрипт
 ```bash
-# Вручну через GitLab UI
-# Або через webhook
+# Звичайний запуск
+./scripts/trigger-pipeline.sh -p PROJECT_ID -t TRIGGER_TOKEN
+
+# Запуск retrain
+./scripts/trigger-pipeline.sh -p PROJECT_ID -t TRIGGER_TOKEN -r
+
+# Запуск при drift detection
+./scripts/trigger-pipeline.sh -p PROJECT_ID -t TRIGGER_TOKEN -d
+```
+
+#### 3. Через API
+```bash
 curl -X POST "https://gitlab.com/api/v4/projects/PROJECT_ID/trigger/pipeline" \
      -H "Content-Type: application/json" \
      -d '{"token": "YOUR_TOKEN", "ref": "main", "variables[TRIGGER_RETRAIN]": "true"}'
+```
+
+#### 4. Через webhook сервер
+```bash
+# Запуск webhook сервера
+GITLAB_PROJECT_ID=123456 \
+GITLAB_TRIGGER_TOKEN=abc123def456 \
+python scripts/drift-webhook.py
+
+# Відправка drift події
+curl -X POST "http://localhost:8080/drift-webhook" \
+     -H "Content-Type: application/json" \
+     -d '{"event": "drift", "payload": {"p_val": 0.001, "is_drift": true}}'
 ```
 
 ## 🔍 Data Quality та Drift Detection
