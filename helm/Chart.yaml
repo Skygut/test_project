@@ -1,0 +1,5 @@
+apiVersion: v2
+name: aiops-quality-project
+version: 0.1.0
+appVersion: "0.1.0"
+description: Helm chart for FastAPI inference with Prometheus metrics

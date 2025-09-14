@@ -1,0 +1,67 @@
+{
+  "annotations": {"list": []},
+  "editable": true,
+  "panels": [
+    {
+      "type": "graph",
+      "title": "Requests per second",
+      "targets": [{"expr": "sum(rate(requests_total{endpoint=\"/predict\"}[1m]))"}],
+      "id": 1,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0}
+    },
+    {
+      "type": "graph",
+      "title": "Latency p95 (s)",
+      "targets": [{"expr": "histogram_quantile(0.95, sum(rate(request_latency_seconds_bucket[5m])) by (le))"}],
+      "id": 2,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0}
+    },
+    {
+      "type": "stat",
+      "title": "Drift events",
+      "targets": [{"expr": "sum(drift_events_total)"}],
+      "id": 3,
+      "gridPos": {"h": 4, "w": 6, "x": 0, "y": 8}
+    },
+    {
+      "type": "stat",
+      "title": "Error rate",
+      "targets": [{"expr": "sum(rate(requests_total{code=\"500\"}[5m])) / sum(rate(requests_total[5m])) * 100"}],
+      "id": 4,
+      "gridPos": {"h": 4, "w": 6, "x": 6, "y": 8}
+    },
+    {
+      "type": "graph",
+      "title": "Request latency distribution",
+      "targets": [
+        {"expr": "histogram_quantile(0.50, sum(rate(request_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p50"},
+        {"expr": "histogram_quantile(0.95, sum(rate(request_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p95"},
+        {"expr": "histogram_quantile(0.99, sum(rate(request_latency_seconds_bucket[5m])) by (le))", "legendFormat": "p99"}
+      ],
+      "id": 5,
+      "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12}
+    },
+    {
+      "type": "graph",
+      "title": "Model version distribution",
+      "targets": [{"expr": "count by (model_version) (requests_total)"}],
+      "id": 6,
+      "gridPos": {"h": 8, "w": 12, "x": 0, "y": 20}
+    },
+    {
+      "type": "graph",
+      "title": "Memory usage",
+      "targets": [{"expr": "container_memory_usage_bytes{pod=~\"aiops.*\"}"}],
+      "id": 7,
+      "gridPos": {"h": 8, "w": 12, "x": 12, "y": 20}
+    }
+  ],
+  "schemaVersion": 39,
+  "title": "AIOps Quality — Inference",
+  "version": 2,
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "refresh": "30s"
+}

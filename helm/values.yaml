@@ -1,0 +1,42 @@
+image:
+  repository: registry.gitlab.com/oleg.kovtun447-group/final-project-mlops
+  tag: "latest"  # CI оновлюватиме
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+env:
+  - name: MODEL_PATH
+    value: /app/model/model.pkl
+  - name: MODEL_VERSION_PATH
+    value: /app/model/model_version.txt
+  - name: DRIFT_ENABLED
+    value: "true"
+  # - name: DRIFT_WEBHOOK
+  #   value: "https://example.com/hook"
+
+podAnnotations:
+  prometheus.io/scrape: "true"
+  prometheus.io/port: "8000"
+  prometheus.io/path: "/metrics"
+
+selectorLabels: {}
+
+replicaCount: 1
+
+# ServiceMonitor (якщо встановлено kube-prometheus-stack)
+serviceMonitor:
+  enabled: true
+  interval: 15s
+  scrapeTimeout: 10s
+  labels: {}
