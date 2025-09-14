@@ -1,0 +1,111 @@
+stages: [test, train, build, deploy]
+
+variables:
+  IMAGE: "$CI_REGISTRY_IMAGE:$(echo $CI_COMMIT_SHORT_SHA)"
+  DOCKER_DRIVER: overlay2
+
+# 0) test: запускає тести та перевірки якості коду
+test:
+  stage: test
+  image: python:3.11-slim
+  before_script:
+    - pip install -r requirements.txt
+    - pip install pytest pytest-cov flake8
+  script:
+    - echo "Running code quality checks..."
+    - flake8 app/ model/ --max-line-length=100 --ignore=E203,W503
+    - echo "Running tests..."
+    - python -m pytest tests/ -v --cov=app --cov=model --cov-report=xml
+  coverage: '/TOTAL.*\s+(\d+%)$/'
+  artifacts:
+    reports:
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+    expire_in: 1 week
+
+# 1) retrain-model: запускається вручну або webhook'ом
+retrain-model:
+  stage: train
+  image: python:3.11-slim
+  rules:
+    - if: '$CI_PIPELINE_SOURCE == "web"'
+    - if: '$CI_PIPELINE_SOURCE == "push"' # опціонально
+    - when: manual
+  before_script:
+    - pip install -r requirements.txt
+  script:
+    - echo "Starting model training with data quality checks..."
+    - python model/train.py
+    - echo "Model version:" && cat model/model_version.txt
+    - echo "Training metrics:" && cat model/training_metrics.json
+  artifacts:
+    paths:
+      - model/model.pkl
+      - model/model_version.txt
+      - model/training_metrics.json
+      - model/reference_data.npy
+    expire_in: 1 week
+
+# 2) build: збірка образу з артефактами моделі
+build-image:
+  stage: build
+  image: gcr.io/kaniko-project/executor:latest
+  needs: [retrain-model]
+  script:
+    - echo "{"auths":{"$CI_REGISTRY":{"username":"$CI_REGISTRY_USER","password":"$CI_REGISTRY_PASSWORD"}}}" > /kaniko/.docker/config.json
+    - |
+      cat > Dockerfile <<'EOF'
+      FROM python:3.11-slim
+      
+      # Install system dependencies
+      RUN apt-get update && apt-get install -y \
+          gcc \
+          g++ \
+          curl \
+          && rm -rf /var/lib/apt/lists/*
+      
+      WORKDIR /app
+      
+      # Copy requirements and install Python dependencies
+      COPY requirements.txt .
+      RUN pip install --no-cache-dir -r requirements.txt
+      
+      # Copy application code
+      COPY app/ /app/app/
+      COPY model/ /app/model/
+      
+      # Create non-root user
+      RUN useradd --create-home --shell /bin/bash app && \
+          chown -R app:app /app
+      USER app
+      
+      # Expose port
+      EXPOSE 8000
+      
+      # Health check
+      HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
+          CMD curl -f http://localhost:8000/health || exit 1
+      
+      # Run the application
+      CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+      EOF
+    - /kaniko/executor --context "$CI_PROJECT_DIR" --dockerfile Dockerfile --destination "$IMAGE"
+
+# 3) deploy: оновлює tag в values.yaml і пушить
+update-helm-and-deploy:
+  stage: deploy
+  image: alpine:3.20
+  needs: [build-image]
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+  before_script:
+    - apk add --no-cache git yq
+    - git config user.email "ci@gitlab.com"
+    - git config user.name "GitLab CI"
+  script:
+    - yq -i '.image.tag = str(env.CI_COMMIT_SHORT_SHA)' helm/values.yaml
+    - git add helm/values.yaml
+    - git commit -m "chore: bump image tag to $CI_COMMIT_SHORT_SHA"
+    - git push origin "$CI_COMMIT_BRANCH"
+  when: on_success
